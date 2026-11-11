@@ -2946,6 +2946,8 @@ keybind: Keybinds = .{},
 /// `quick-terminal-screen` only determine where the window first appears.
 /// `quick-terminal-autohide` hides the window when kghostty loses focus,
 /// and `quick-terminal-space-behavior` still applies.
+/// `quick-terminal-animation-duration` is the fade in/out duration in
+/// seconds; `0` shows and hides the window without any animation.
 ///
 /// Only implemented on macOS.
 @"quick-terminal-normal-window": bool = false,

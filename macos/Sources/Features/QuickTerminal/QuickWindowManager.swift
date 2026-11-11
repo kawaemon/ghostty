@@ -17,6 +17,10 @@ import GhosttyKit
 /// AppKit dissolves a tab group when its windows are ordered out, so when
 /// hiding we remember the tab order and the selected tab and rebuild the
 /// group when showing again.
+///
+/// AppKit's own window animations are disabled. Instead the window fades
+/// in and out over `quick-terminal-animation-duration` seconds, and is
+/// shown and hidden instantly when that is 0.
 final class QuickWindowManager {
     static let tabbingIdentifier = "com.kawaemon.kghostty.quickWindow"
 
@@ -71,6 +75,10 @@ final class QuickWindowManager {
     /// The frame of the last quick window, reused when a new one is created
     /// after all of them were closed.
     private var lastFrame: NSRect?
+
+    /// Incremented for every show/hide so a stale fade-out completion does
+    /// not order out windows that were shown again in the meantime.
+    private var animationGeneration = 0
 
     private init(_ ghostty: Ghostty.App) {
         self.ghostty = ghostty
@@ -128,11 +136,14 @@ final class QuickWindowManager {
 
         live.forEach(applyWindowBehavior)
 
-        // Already on screen (e.g. behind another app): just bring it forward.
+        // Already on screen (e.g. behind another app or fading out): just
+        // bring it forward.
         if let visible = live.first(where: \.isVisible) {
             let target = visible.tabGroup?.selectedWindow ?? visible
+            animationGeneration += 1
             target.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+            fadeIn(target, from: target.alphaValue)
             return
         }
 
@@ -141,7 +152,10 @@ final class QuickWindowManager {
         let saved = hiddenOrder.compactMap(\.value).filter { live.contains($0) }
         let order = saved + live.filter { !saved.contains($0) }
         guard let first = order.first else { return }
+        let selected = hiddenSelected.flatMap { order.contains($0) ? $0 : nil } ?? first
 
+        animationGeneration += 1
+        if animationDuration > 0 { selected.alphaValue = 0 }
         first.orderFront(nil)
         var last = first
         for window in order.dropFirst() {
@@ -149,12 +163,12 @@ final class QuickWindowManager {
             last = window
         }
 
-        let selected = hiddenSelected.flatMap { order.contains($0) ? $0 : nil } ?? first
         if order.count > 1 {
             first.tabGroup?.selectedWindow = selected
         }
         selected.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        fadeIn(selected, from: 0)
 
         hiddenOrder = []
         hiddenSelected = nil
@@ -177,7 +191,26 @@ final class QuickWindowManager {
         hiddenSelected = selected
         if let selected { lastFrame = selected.frame }
 
-        order.forEach { $0.orderOut(nil) }
+        animationGeneration += 1
+        let generation = animationGeneration
+        let finish = { [weak self] in
+            guard let self, self.animationGeneration == generation else { return }
+            order.forEach {
+                $0.orderOut(nil)
+                $0.alphaValue = 1
+            }
+        }
+
+        let duration = animationDuration
+        if duration > 0, let selected, selected.isVisible {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = duration
+                context.timingFunction = .init(name: .easeIn)
+                selected.animator().alphaValue = 0
+            }, completionHandler: finish)
+        } else {
+            finish()
+        }
 
         if restorePreviousApp, let previousApp, !previousApp.isTerminated {
             _ = previousApp.activate(options: [])
@@ -196,10 +229,35 @@ final class QuickWindowManager {
         adopt(window)
 
         let frame = restorableLastFrame ?? initialFrame(for: window)
+        animationGeneration += 1
+        if animationDuration > 0 { window.alphaValue = 0 }
         controller.showWindowSafely(nil)
         window.setFrame(frame, display: true)
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        fadeIn(window, from: 0)
+    }
+
+    // MARK: Animation
+
+    private var animationDuration: Double {
+        max(0, ghostty.config.quickTerminalAnimationDuration)
+    }
+
+    /// Fade a window in from `alpha` to fully opaque.
+    private func fadeIn(_ window: NSWindow, from alpha: CGFloat) {
+        let duration = animationDuration
+        guard duration > 0, alpha < 1 else {
+            window.alphaValue = 1
+            return
+        }
+
+        window.alphaValue = alpha
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = duration * Double(1 - alpha)
+            context.timingFunction = .init(name: .easeOut)
+            window.animator().alphaValue = 1
+        }
     }
 
     /// Marks a window as part of the quick window.
@@ -207,6 +265,8 @@ final class QuickWindowManager {
         window.tabbingIdentifier = Self.tabbingIdentifier
         // Quick windows are recreated on demand, never restored on launch.
         window.isRestorable = false
+        // We animate (or not) ourselves; see quick-terminal-animation-duration.
+        window.animationBehavior = .none
         applyWindowBehavior(window)
         if !tracked.contains(where: { $0.value === window }) {
             tracked.append(Weak(window))
