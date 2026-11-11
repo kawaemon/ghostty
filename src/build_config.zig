@@ -57,6 +57,13 @@ pub const i18n: bool = config.i18n;
 /// avoid it in Zig coe as much as possible.
 pub const bundle_id = "com.mitchellh.ghostty";
 
+/// kghostty: identifier for per-user data directories on macOS
+/// (Application Support, Caches). This matches the kghostty macOS app
+/// bundle ID so that kghostty does not share state with upstream Ghostty.
+/// `bundle_id` is intentionally left alone because it is also used as the
+/// gettext domain and GTK application/icon ID.
+pub const data_dir_id = "com.kawaemon.kghostty";
+
 /// True if we should have "slow" runtime safety checks. The initial motivation
 /// for this was terminal page/pagelist integrity checks. These were VERY
 /// slow but very thorough. But they made it so slow that the terminal couldn't

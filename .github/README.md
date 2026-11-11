@@ -7,6 +7,10 @@ It contains changes that I want, made without coordination with upstream.
 - Please do not report issues found in this fork to upstream.
 - For the original README, see [README.md](../README.md).
 
+## Changes from upstream
+
+- Rename Ghostty to kghostty (app name, bundle ID, and config directory `~/.config/kghostty`) to avoid conflicts with upstream Ghostty.
+
 ## License
 
 Ghostty is licensed under the [MIT License](../LICENSE).

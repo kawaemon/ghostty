@@ -1,6 +1,6 @@
 # Fork-specific macOS release (kawaemon/ghostty).
 #
-# Push a tag like `v1.2.3` to build Ghostty.app and publish it as a GitHub
+# Push a tag like `v1.2.3` to build KGhostty.app and publish it as a GitHub
 # Release. The app is ad-hoc signed only (no Developer ID, no notarization),
 # so on first launch macOS will block it; allow it from
 # System Settings > Privacy & Security > "Open Anyway".
@@ -82,13 +82,14 @@ jobs:
       - name: Zip
         run: |
           cd macos/build/Release
-          ditto -c -k --keepParent Ghostty.app "$GITHUB_WORKSPACE/Ghostty-macos-${GITHUB_REF_NAME}.zip"
+          mv Ghostty.app KGhostty.app
+          ditto -c -k --keepParent KGhostty.app "$GITHUB_WORKSPACE/KGhostty-macos-${GITHUB_REF_NAME}.zip"
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            "Ghostty-macos-${GITHUB_REF_NAME}.zip" \
+            "KGhostty-macos-${GITHUB_REF_NAME}.zip" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes
