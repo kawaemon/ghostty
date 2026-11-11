@@ -2929,6 +2929,13 @@ keybind: Keybinds = .{},
 /// Only implemented on macOS.
 @"quick-terminal-normal-window": bool = false,
 
+/// (kghostty) If true, the quick terminal window supports native tabs
+/// (`new_tab`, e.g. `cmd+t`). Tabs are hidden and shown together with the
+/// quick terminal. Requires `quick-terminal-normal-window`.
+///
+/// Only implemented on macOS.
+@"quick-terminal-tabs": bool = false,
+
 /// Whether to enable shell integration auto-injection or not. Shell integration
 /// greatly enhances the terminal experience by enabling a number of features:
 ///

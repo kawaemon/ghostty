@@ -429,7 +429,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         }
 
         // kghostty: the quick window may not allow tabs.
-        if QuickWindowManager.shouldBlockNewTab(from: parent) { return nil }
+        if QuickWindowManager.shouldBlockNewTab(from: parent, ghostty) { return nil }
 
         // If our parent is in non-native fullscreen, then new tabs do not work.
         // See: https://github.com/mitchellh/ghostty/issues/392
@@ -448,6 +448,7 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         let controller = TerminalController.init(ghostty, withBaseConfig: baseConfig)
         controller.isBackgroundOpaque = parentController.isBackgroundOpaque
         guard let window = controller.window else { return controller }
+        QuickWindowManager.adoptNewTab(window, from: parent, ghostty) // kghostty
 
         // If the parent is miniaturized, then macOS exhibits really strange behaviors
         // so we have to bring it back out.
@@ -1179,6 +1180,14 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     /// Setup correct window frame before showing the window
     override func showWindow(_ sender: Any?) {
         guard let terminalWindow = window as? TerminalWindow else { return }
+
+        // kghostty: quick windows manage their own frame (and new tabs must
+        // not move the tab group they were just added to).
+        if QuickWindowManager.isQuickWindow(terminalWindow) {
+            super.showWindow(sender)
+            syncAppearance()
+            return
+        }
 
         // Set the initial window position. This must happen after the window
         // is fully set up (content view, toolbar, default size) so that

@@ -11,6 +11,7 @@ It contains changes that I want, made without coordination with upstream.
 
 - Rename Ghostty to kghostty (app name, bundle ID, and config directory `~/.config/kghostty`) to avoid conflicts with upstream Ghostty.
 - Add `quick-terminal-normal-window` to show the quick terminal as a regular movable, resizable window with a titlebar (macOS).
+- Add `quick-terminal-tabs` to allow native tabs (`cmd+t`) in that quick terminal window (macOS).
 
 ## License
 

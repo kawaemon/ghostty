@@ -11,6 +11,8 @@ import GhosttyKit
 ///
 /// Quick windows are marked with a dedicated `tabbingIdentifier`, which
 /// also keeps AppKit from automatically merging regular windows into them.
+/// With `quick-terminal-tabs`, new tabs created from a quick window become
+/// quick windows as well and are hidden and shown together.
 ///
 /// AppKit dissolves a tab group when its windows are ordered out, so when
 /// hiding we remember the tab order and the selected tab and rebuild the
@@ -34,16 +36,24 @@ final class QuickWindowManager {
 
     /// Called before a new tab is created from `parent`. Returns true (after
     /// telling the user why) if the new tab must not be created.
-    static func shouldBlockNewTab(from parent: NSWindow?) -> Bool {
+    static func shouldBlockNewTab(from parent: NSWindow?, _ ghostty: Ghostty.App) -> Bool {
         guard let parent, isQuickWindow(parent) else { return false }
+        if ghostty.config.quickTerminalTabs { return false }
 
         let alert = NSAlert()
         alert.messageText = "Cannot Create New Tab"
-        alert.informativeText = "Tabs aren't supported in the Quick Terminal."
+        alert.informativeText = "Tabs aren't enabled for the Quick Terminal. Set `quick-terminal-tabs = true` to enable them."
         alert.addButton(withTitle: "OK")
         alert.alertStyle = .warning
         alert.beginSheetModal(for: parent)
         return true
+    }
+
+    /// Called when a new tab window is created from `parent`. If the parent
+    /// is a quick window, the new tab becomes part of the quick window too.
+    static func adoptNewTab(_ window: NSWindow, from parent: NSWindow, _ ghostty: Ghostty.App) {
+        guard isQuickWindow(parent) else { return }
+        shared(ghostty).adopt(window)
     }
 
     private let ghostty: Ghostty.App
