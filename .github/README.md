@@ -15,6 +15,10 @@ It contains changes that I want, made without coordination with upstream.
 - Allow a per-font `:style=<name>` suffix in `font-family*` and `font-codepoint-map` (e.g. `Hiragino Sans:style=W3`) to override `font-style*` for that font only.
 - Honor `quick-terminal-animation-duration` for the normal-window quick terminal as a fade in/out (`0` disables animation).
 
+## Install locally
+
+Run `.github/kawaemon-install.sh` to build a Release KGhostty, replace `/Applications/KGhostty.app`, sign it (with an Apple Development identity if available, so Accessibility permission survives reinstalls) and relaunch it.
+
 ## License
 
 Ghostty is licensed under the [MIT License](../LICENSE).

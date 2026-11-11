@@ -74,7 +74,7 @@ jobs:
       # Editing Info.plist invalidates the signature, and the hardened
       # runtime refuses ad-hoc signed Sparkle, so re-sign everything ad-hoc.
       - name: Re-sign (ad-hoc)
-        run: .github/kawaemon-adhoc-sign.sh macos/build/Release/Ghostty.app
+        run: .github/kawaemon-sign.sh macos/build/Release/Ghostty.app
 
       - name: Zip
         run: |
