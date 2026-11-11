@@ -1,0 +1,94 @@
+# Fork-specific macOS release (kawaemon/ghostty).
+#
+# Push a tag like `v1.2.3` to build Ghostty.app and publish it as a GitHub
+# Release. The app is ad-hoc signed only (no Developer ID, no notarization),
+# so on first launch macOS will block it; allow it from
+# System Settings > Privacy & Security > "Open Anyway".
+name: "kawaemon: Release macOS"
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Needed for the build number (commit count).
+          fetch-depth: 0
+
+      - name: Extract build info
+        run: |
+          echo "GHOSTTY_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          echo "GHOSTTY_BUILD=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+          echo "GHOSTTY_COMMIT=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
+        with:
+          determinate: true
+
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ghostty
+
+      - name: Select latest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Build GhosttyKit
+        run: |
+          nix develop -c zig build \
+            -Doptimize=ReleaseFast \
+            -Demit-macos-app=false \
+            -Dversion-string="${GHOSTTY_VERSION}"
+
+      # Must NOT run inside Nix; Nix breaks xcodebuild. The project's default
+      # signing identity is "-" (ad-hoc), which is what we want.
+      - name: Build Ghostty.app
+        run: |
+          cd macos
+          xcodebuild -target Ghostty -configuration Release
+
+      # Unlike upstream, we keep SUEnableAutomaticChecks=false so the app
+      # never auto-checks upstream's Sparkle feed and replaces itself.
+      - name: Update Info.plist
+        run: |
+          PLIST=macos/build/Release/Ghostty.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :GhosttyCommit $GHOSTTY_COMMIT" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $GHOSTTY_BUILD" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $GHOSTTY_VERSION" "$PLIST"
+
+      # Editing Info.plist invalidates the signature; re-sign ad-hoc.
+      - name: Re-sign (ad-hoc)
+        run: |
+          codesign --force --sign - \
+            --entitlements macos/Ghostty.entitlements \
+            macos/build/Release/Ghostty.app
+          codesign --verify --deep --strict --verbose=2 macos/build/Release/Ghostty.app
+
+      - name: Zip
+        run: |
+          cd macos/build/Release
+          ditto -c -k --keepParent Ghostty.app "$GITHUB_WORKSPACE/Ghostty-macos-${GITHUB_REF_NAME}.zip"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "Ghostty-macos-${GITHUB_REF_NAME}.zip" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
