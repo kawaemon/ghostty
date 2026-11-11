@@ -2915,6 +2915,20 @@ keybind: Keybinds = .{},
 /// Available since: 1.2.0
 @"quick-terminal-keyboard-interactivity": QuickTerminalKeyboardInteractivity = .@"on-demand",
 
+/// (kghostty) If true, the quick terminal is shown as a regular terminal
+/// window instead of a borderless panel that slides in from a screen edge.
+/// The window has a titlebar, can be moved with the mouse, and can be
+/// resized. `toggle_quick_terminal` hides and shows the window, keeping
+/// its position and size.
+///
+/// `quick-terminal-position`, `quick-terminal-size` and
+/// `quick-terminal-screen` only determine where the window first appears.
+/// `quick-terminal-autohide` hides the window when kghostty loses focus,
+/// and `quick-terminal-space-behavior` still applies.
+///
+/// Only implemented on macOS.
+@"quick-terminal-normal-window": bool = false,
+
 /// Whether to enable shell integration auto-injection or not. Shell integration
 /// greatly enhances the terminal experience by enabling a number of features:
 ///

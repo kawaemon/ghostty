@@ -1071,6 +1071,12 @@ class AppDelegate: NSObject,
     }
 
     @IBAction func toggleQuickTerminal(_ sender: Any) {
+        // kghostty: quick-terminal-normal-window
+        if ghostty.config.quickTerminalNormalWindow {
+            QuickWindowManager.shared(ghostty).toggle()
+            return
+        }
+
         quickController.toggle()
     }
 

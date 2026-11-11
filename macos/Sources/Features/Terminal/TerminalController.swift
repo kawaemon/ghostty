@@ -428,6 +428,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
             return newWindow(ghostty, withBaseConfig: baseConfig, withParent: parent)
         }
 
+        // kghostty: the quick window may not allow tabs.
+        if QuickWindowManager.shouldBlockNewTab(from: parent) { return nil }
+
         // If our parent is in non-native fullscreen, then new tabs do not work.
         // See: https://github.com/mitchellh/ghostty/issues/392
         if let fullscreenStyle = parentController.fullscreenStyle,
@@ -583,7 +586,8 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     private func syncRestoration(_ config: Ghostty.Config) {
         guard isWindowLoaded, let window else { return }
         // Setting all three of these is required for restoration to work.
-        window.isRestorable = restorable && config.windowSaveState != "never"
+        window.isRestorable = restorable && config.windowSaveState != "never" &&
+            !QuickWindowManager.isQuickWindow(window) // kghostty
         window.restorationClass = TerminalWindowRestoration.self
         window.identifier = .init(String(describing: TerminalWindowRestoration.self))
     }

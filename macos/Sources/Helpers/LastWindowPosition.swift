@@ -13,6 +13,8 @@ class LastWindowPosition {
         // with the wrong one when window decorations change while creating,
         // e.g. adding a toolbar affects the window's frame.
         guard let window, window.isVisible else { return false }
+        // kghostty: the quick window keeps its own frame.
+        if QuickWindowManager.isQuickWindow(window) { return false }
         let frame = window.frame
         let rect = [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height]
         UserDefaults.ghostty.set(rect, forKey: positionKey)
