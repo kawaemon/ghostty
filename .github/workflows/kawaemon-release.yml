@@ -71,13 +71,10 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $GHOSTTY_BUILD" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $GHOSTTY_VERSION" "$PLIST"
 
-      # Editing Info.plist invalidates the signature; re-sign ad-hoc.
+      # Editing Info.plist invalidates the signature, and the hardened
+      # runtime refuses ad-hoc signed Sparkle, so re-sign everything ad-hoc.
       - name: Re-sign (ad-hoc)
-        run: |
-          codesign --force --sign - \
-            --entitlements macos/Ghostty.entitlements \
-            macos/build/Release/Ghostty.app
-          codesign --verify --deep --strict --verbose=2 macos/build/Release/Ghostty.app
+        run: .github/kawaemon-adhoc-sign.sh macos/build/Release/Ghostty.app
 
       - name: Zip
         run: |
