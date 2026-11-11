@@ -1,0 +1,4 @@
+/* kghostty: localized bundle names. CFBundleName comes from PRODUCT_NAME
+   (Ghostty), and overriding it here avoids renaming the Xcode product. */
+"CFBundleName" = "KGhostty";
+"CFBundleDisplayName" = "KGhostty";
