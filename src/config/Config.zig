@@ -174,6 +174,20 @@ language: ?[:0]const u8 = null,
 /// this within config files if you want to clear previously set values in
 /// configuration files or on the CLI if you want to clear values set on the
 /// CLI.
+///
+/// (kghostty) Each entry may end with `:style=<name>` to select a style for
+/// that entry only, overriding the matching `font-style*` option. This is
+/// useful when combining fonts whose style names differ, for example:
+///
+///     font-family = JetBrains Mono
+///     font-family = Hiragino Sans:style=W3
+///     font-style = Light
+///     font-family-bold = JetBrains Mono
+///     font-family-bold = Hiragino Sans:style=W6
+///
+/// When `font-family-bold` (or italic, bold italic) is not set, it is
+/// copied from `font-family` including any `:style=`, so set it explicitly
+/// to pick a different style for those entries.
 @"font-family": RepeatableString = .{},
 @"font-family-bold": RepeatableString = .{},
 @"font-family-italic": RepeatableString = .{},
@@ -191,6 +205,9 @@ language: ?[:0]const u8 = null,
 /// These are only valid if its corresponding font-family is also specified. If
 /// no font-family is specified, then the font-style is ignored unless you're
 /// disabling the font style.
+///
+/// (kghostty) The style applies to every entry of the corresponding
+/// font-family list except entries with their own `:style=` suffix.
 @"font-style": FontStyle = .{ .default = {} },
 @"font-style-bold": FontStyle = .{ .default = {} },
 @"font-style-italic": FontStyle = .{ .default = {} },
@@ -308,6 +325,10 @@ language: ?[:0]const u8 = null,
 /// `U+ABCD-U+DEFG`. You can specify multiple ranges for the same font separated
 /// by commas, such as `U+ABCD-U+DEFG,U+1234-U+5678=fontname`. The font name is
 /// the same value as you would use for `font-family`.
+///
+/// (kghostty) The font name may end with `:style=<name>` to pick a specific
+/// style, e.g. `U+3000-U+30FF=Hiragino Sans:style=W3`. The mapped font is
+/// used for every terminal font style.
 ///
 /// This configuration can be repeated multiple times to specify multiple
 /// codepoint mappings.
@@ -8237,13 +8258,15 @@ pub const RepeatableCodepointMap = struct {
         const key = std.mem.trim(u8, input[0..eql_idx], whitespace);
         const value = std.mem.trim(u8, input[eql_idx + 1 ..], whitespace);
         const valueZ = try alloc.dupeSentinel(u8, value, 0);
+        const entry = try fontpkg.family_entry.parse(alloc, valueZ); // kghostty
 
         var p: UnicodeRangeParser = .{ .input = key };
         while (try p.next()) |range| {
             try self.map.add(alloc, .{
                 .range = range,
                 .descriptor = .{
-                    .family = valueZ,
+                    .family = entry.family,
+                    .style = entry.style,
                     .monospace = false, // we allow any font
                 },
             });
@@ -8281,15 +8304,20 @@ pub const RepeatableCodepointMap = struct {
         const ranges = self.map.list.items(.range);
         const descriptors = self.map.list.items(.descriptor);
         for (ranges, descriptors) |range, descriptor| {
+            // kghostty: keep a per-entry `:style=` when formatting.
+            const style_sep: []const u8 = if (descriptor.style != null) ":style=" else "";
+            const style: []const u8 = descriptor.style orelse "";
             if (range[0] == range[1]) {
                 try formatter.formatEntry(
                     []const u8,
                     std.mem.print(
                         &buf,
-                        "U+{X:0>4}={s}",
+                        "U+{X:0>4}={s}{s}{s}",
                         .{
                             range[0],
                             descriptor.family orelse "",
+                            style_sep,
+                            style,
                         },
                     ) catch return error.OutOfMemory,
                 );
@@ -8298,11 +8326,13 @@ pub const RepeatableCodepointMap = struct {
                     []const u8,
                     std.mem.print(
                         &buf,
-                        "U+{X:0>4}-U+{X:0>4}={s}",
+                        "U+{X:0>4}-U+{X:0>4}={s}{s}{s}",
                         .{
                             range[0],
                             range[1],
                             descriptor.family orelse "",
+                            style_sep,
+                            style,
                         },
                     ) catch return error.OutOfMemory,
                 );
@@ -8457,6 +8487,24 @@ pub const RepeatableCodepointMap = struct {
         try list.parseCLI(alloc, "U+ABCD=Comic Sans");
         try list.formatEntry(formatterpkg.entryFormatter("a", &buf.writer));
         try std.testing.expectEqualSlices(u8, "a = U+ABCD=Comic Sans\n", buf.written());
+    }
+
+    test "formatConfig style (kghostty)" {
+        const testing = std.testing;
+        var buf: std.Io.Writer.Allocating = .init(testing.allocator);
+        defer buf.deinit();
+
+        var arena = ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+
+        var list: Self = .{};
+        try list.parseCLI(alloc, "U+3000-U+30FF=Hiragino Sans:style=W3");
+        const desc = list.map.list.items(.descriptor)[0];
+        try testing.expectEqualStrings("Hiragino Sans", desc.family.?);
+        try testing.expectEqualStrings("W3", desc.style.?);
+        try list.formatEntry(formatterpkg.entryFormatter("a", &buf.writer));
+        try std.testing.expectEqualSlices(u8, "a = U+3000-U+30FF=Hiragino Sans:style=W3\n", buf.written());
     }
 
     test "formatConfig range" {

@@ -8,6 +8,7 @@ pub const Atlas = @import("Atlas.zig");
 pub const Backend = @import("backend.zig").Backend;
 pub const discovery = @import("discovery.zig");
 pub const embedded = @import("embedded.zig");
+pub const family_entry = @import("family_entry.zig"); // kghostty
 pub const face = @import("face.zig");
 pub const CodepointMap = @import("CodepointMap.zig");
 pub const CodepointResolver = @import("CodepointResolver.zig");

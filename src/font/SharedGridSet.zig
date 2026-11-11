@@ -26,6 +26,7 @@ const DesiredSize = font.face.DesiredSize;
 const Face = font.Face;
 const SharedGrid = font.SharedGrid;
 const discovery = @import("discovery.zig");
+const family_entry = @import("family_entry.zig"); // kghostty
 const configpkg = @import("../config.zig");
 const Config = configpkg.Config;
 const global = @import("../global.zig");
@@ -617,10 +618,13 @@ pub const Key = struct {
 
         var descriptors: std.ArrayList(discovery.Descriptor) = .empty;
         defer descriptors.deinit(alloc);
+        // kghostty: each family entry may carry its own `:style=` which
+        // overrides the corresponding font-style* option for that entry.
         for (config.@"font-family".list.items) |family| {
+            const entry = try family_entry.parse(alloc, family);
             try descriptors.append(alloc, .{
-                .family = family,
-                .style = config.@"font-style".nameValue(),
+                .family = entry.family,
+                .style = entry.style orelse config.@"font-style".nameValue(),
                 .size = font_size.points,
                 .variations = config.@"font-variation".list.items,
             });
@@ -635,9 +639,10 @@ pub const Key = struct {
         // no results would be found if we restrict to ALSO searching for
         // italic.
         for (config.@"font-family-bold".list.items) |family| {
-            const style = config.@"font-style-bold".nameValue();
+            const entry = try family_entry.parse(alloc, family);
+            const style = entry.style orelse config.@"font-style-bold".nameValue();
             try descriptors.append(alloc, .{
-                .family = family,
+                .family = entry.family,
                 .style = style,
                 .size = font_size.points,
                 .bold = style == null,
@@ -645,9 +650,10 @@ pub const Key = struct {
             });
         }
         for (config.@"font-family-italic".list.items) |family| {
-            const style = config.@"font-style-italic".nameValue();
+            const entry = try family_entry.parse(alloc, family);
+            const style = entry.style orelse config.@"font-style-italic".nameValue();
             try descriptors.append(alloc, .{
-                .family = family,
+                .family = entry.family,
                 .style = style,
                 .size = font_size.points,
                 .italic = style == null,
@@ -655,9 +661,10 @@ pub const Key = struct {
             });
         }
         for (config.@"font-family-bold-italic".list.items) |family| {
-            const style = config.@"font-style-bold-italic".nameValue();
+            const entry = try family_entry.parse(alloc, family);
+            const style = entry.style orelse config.@"font-style-bold-italic".nameValue();
             try descriptors.append(alloc, .{
-                .family = family,
+                .family = entry.family,
                 .style = style,
                 .size = font_size.points,
                 .bold = style == null,

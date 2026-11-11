@@ -12,6 +12,7 @@ It contains changes that I want, made without coordination with upstream.
 - Rename Ghostty to kghostty (app name, bundle ID, and config directory `~/.config/kghostty`) to avoid conflicts with upstream Ghostty.
 - Add `quick-terminal-normal-window` to show the quick terminal as a regular movable, resizable window with a titlebar (macOS).
 - Add `quick-terminal-tabs` to allow native tabs (`cmd+t`) in that quick terminal window (macOS).
+- Allow a per-font `:style=<name>` suffix in `font-family*` and `font-codepoint-map` (e.g. `Hiragino Sans:style=W3`) to override `font-style*` for that font only.
 
 ## License
 
